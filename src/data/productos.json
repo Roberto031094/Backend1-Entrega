@@ -1,0 +1,14 @@
+[
+  {
+    "id": "df656113-5112-4801-8d74-eca9a0f122f9",
+    "title": "Producto 1",
+    "price": "100",
+    "description": "Descripción Misteriosa",
+    "stock": "3",
+    "code": "123456",
+    "category": "Ventana1",
+    "thumbnails": [
+      "nohay.jpg"
+    ]
+  }
+]

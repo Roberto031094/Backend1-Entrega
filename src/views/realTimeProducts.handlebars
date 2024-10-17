@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../public/css/index.css">
+    <title>Productos en Tiempo Real</title>
+</head>
+<body>
+    <header>
+        <h1>Lista de Productos en Tiempo Real</h1>
+    </header>
+
+    <section id="add-product-form">
+        <h2>Agregar Producto</h2>
+        <form id="productForm">
+            <label for="title">Título:</label>
+            <input type="text" id="title" name="title" required><br>
+            <label for="price">Precio:</label>
+            <input type="number" id="price" name="price" required><br>
+            <label for="description">Descripción:</label>
+            <input type="text" id="description" name="description" required><br>
+            <label for="stock">Stock:</label>
+            <input type="number" id="stock" name="stock" required><br>
+            <label for="code">Código:</label>
+            <input type="text" id="code" name="code" required><br>
+            <label for="category">Categoría:</label>
+            <input type="text" id="category" name="category" required><br>
+            <label for="thumbnails">Thumbnails:</label>
+            <input type="text" id="thumbnails" name="thumbnails" placeholder="URL de imagen"><br>
+            <br>
+            <button type="submit">Agregar Producto</button>
+        </form>
+    </section>
+
+    <section id="product-list">
+        <ul>
+            {{#each products}}
+            <li id="product-{{this._id}}">
+                <h2>{{this.title}}</h2>
+                <p>Precio: ${{this.price}}</p>
+                <p>Descripción: {{this.description}}</p>
+                <a href="/products/{{this._id}}">Ver detalles</a>
+                <br>
+                <br>
+                <button class="add-to-cart" data-id="{{this._id}}">Agregar al carrito</button>
+                <br>
+                <br>
+                <button class="delete-button" data-id="{{this._id}}">Borrar Producto</button>
+            </li>
+            {{/each}}
+        </ul>
+        <div class="pagination">
+            {{#if hasPrevPage}}
+                <a href="?page={{prevPage}}">Anterior</a>
+            {{/if}}
+            
+            <span>Página {{page}} de {{totalPages}}</span>
+            
+            {{#if hasNextPage}}
+                <a href="?page={{nextPage}}">Siguiente</a>
+            {{/if}}
+        </div>
+    </section>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io(); 
+        const productForm = document.getElementById('productForm');
+
+        const addDeleteEventListeners = () => {
+            const deleteButtons = document.querySelectorAll('.delete-button');
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', async (event) => {
+                    const productId = event.target.dataset.id;
+
+                    // Solicitud DELETE al servidor
+                    try {
+                        const response = await fetch(`/api/products/${productId}`, {
+                            method: 'DELETE',
+                        });
+
+                        if (response.ok) {
+                            console.log(`Producto con ID ${productId} eliminado.`);
+                            socket.emit('deleteProduct', productId);
+                        } else {
+                            console.error('Error al eliminar el producto');
+                        }
+                    } catch (error) {
+                        console.error('Error en la solicitud:', error);
+                    }
+                });
+            });
+        };
+
+        // Recibe producto agregado desde el servidor y lo inserta en la lista
+        socket.on('productAdded', (newProduct) => {
+            const productListElement = document.getElementById('product-list').getElementsByTagName('ul')[0];
+            const productItem = `
+                <li id="product-${newProduct._id}">
+                    <h2>${newProduct.title}</h2>
+                    <p>Precio: $${newProduct.price}</p>
+                    <p>Descripción: ${newProduct.description}</p>
+                    <a href="/products/${newProduct._id}">Ver detalles</a>
+                    <br>
+                    <br>
+                    <button class="add-to-cart" data-id="${newProduct._id}">Agregar al carrito</button>
+                    <br>
+                    <br>
+                    <button class="delete-button" data-id="${newProduct._id}">Borrar Producto</button>
+                </li>`;
+            productListElement.insertAdjacentHTML('beforeend', productItem);
+            
+            addDeleteEventListeners();
+        });
+
+        // Elimina producto cuando se recibe evento de eliminación
+        socket.on('productDeleted', (deletedProductId) => {
+            const productElement = document.getElementById(`product-${deletedProductId}`);
+            if (productElement) {
+                productElement.remove();
+            }
+        });
+
+        // Manejo del envío del formulario para agregar un producto
+        productForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); 
+
+            const newProduct = {
+                title: document.getElementById('title').value,
+                price: document.getElementById('price').value,
+                description: document.getElementById('description').value,
+                stock: document.getElementById('stock').value,
+                code: document.getElementById('code').value,
+                category: document.getElementById('category').value,
+                thumbnails: document.getElementById('thumbnails').value,
+            };
+
+            socket.emit('addProduct', newProduct);
+
+            try {
+                const response = await fetch('/api/products/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newProduct)
+                });
+
+                if (response.ok) {
+                    const savedProduct = await response.json();
+                    console.log('Producto agregado correctamente:', savedProduct);
+                } else {
+                    console.error('Error al agregar producto');
+                }
+            } catch (error) {
+                console.error('Error en la solicitud:', error);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', addDeleteEventListeners);
+
+        //Agregar al Carrito
+        document.querySelectorAll('.add-to-cart').forEach(button => {
+            button.addEventListener('click', async function() {
+                const productId = this.getAttribute('data-id');
+                const cartId = '670e6b3ec9af956411928ab4'; // ID del carrito
+                const url = `/api/carts/${cartId}/product/${productId}`; 
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            quantity: 1 
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al agregar el producto al carrito');
+                    }
+
+                    const result = await response.json();
+                    console.log('Producto agregado al carrito:', result);
+                    alert('Producto agregado al carrito');
+                } catch (error) {
+                    console.error('Hubo un problema con la solicitud:', error);
+                    alert('Hubo un error al agregar el producto al carrito');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

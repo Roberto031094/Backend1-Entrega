@@ -1,0 +1,51 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../public/css/index.css">
+  <title>Document</title>
+</head>
+<body>
+  <h1>{{product.title}}</h1>
+  <p>ID: {{product._id}}</p>
+  <p>Precio: {{product.price}}</p>
+  <p>Descripción: {{product.description}}</p>
+  <p>Stock: {{product.stock}}</p>
+  <p>Código: {{product.code}}</p>
+  <p>Categoría: {{product.category}}</p>
+  <p>Foto: {{product.thumbnails}}</p>
+
+  <button class="add-to-cart" data-id="{{product._id}}">Agregar al carrito</button>
+
+  <script>
+    document.querySelector('.add-to-cart').addEventListener('click', async function() {
+      const productId = this.getAttribute('data-id');
+      const cartId = '670e6b3ec9af956411928ab4'; // ID del carrito en el que lo guarda
+      const url = `/api/carts/${cartId}/product/${productId}`; 
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            quantity: 1 
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al agregar el producto al carrito');
+        }
+
+        const result = await response.json();
+        console.log('Producto agregado al carrito:', result);
+        alert('Producto agregado correctamente al carrito');
+      } catch (error) {
+        console.error('Hubo un problema con la solicitud:', error);
+        alert('Hubo un error al agregar el producto al carrito');
+      }
+    });
+  </script>
+</body>
+</html>
